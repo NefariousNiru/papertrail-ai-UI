@@ -8,6 +8,7 @@ import { useApiKey } from "../features/api-key/useApiKey";
 import type { Claim } from "../lib/types";
 import { downloadJSON, downloadMarkdown } from "../lib/export";
 import { useClaimsStream } from "../features/stream/useClaimsStreams";
+import ParseProgressBar from "../components/common/ParseProgressBar";
 
 /**
  * Flow:
@@ -35,14 +36,6 @@ export function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claudeApiKey]);
 
-  const completion = useMemo(() => {
-    if (!progress || progress.total === 0) return 0;
-    return Math.min(
-      100,
-      Math.round((progress.processed / progress.total) * 100)
-    );
-  }, [progress]);
-
   const onJob = (jobId: string) => {
     if (!claudeApiKey) return;
     start(jobId, claudeApiKey);
@@ -63,18 +56,7 @@ export function Dashboard() {
             <div className="mb-2 text-sm subtle">
               Parsing & claim extraction
             </div>
-            <div
-              className="h-2 w-full overflow-hidden rounded-full"
-              style={{ background: "var(--border)" }}
-            >
-              <div
-                className="h-full transition-[width] duration-300"
-                style={{ width: `${completion}%`, background: "var(--accent)" }}
-              />
-            </div>
-            <div className="mt-1 text-right text-xs subtle">
-              {progress ? `${progress.processed}/${progress.total}` : "0/0"}
-            </div>
+            <ParseProgressBar progress={progress} />
 
             {error && (
               <div

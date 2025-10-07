@@ -42,13 +42,7 @@ export async function validateClaudeKeyViaBackend(key: string): Promise<Validate
 
         if (res.ok) return { ok: true, status: res.status };
 
-        let msg = "";
-        try {
-            const data: { ok?: boolean; error?: string } = await res.json();
-            msg = data.error ?? "";
-        } catch {
-            msg = await res.text();
-        }
+        const msg = await safeErr(res);
         return { ok: false, status: res.status, error: msg || "Invalid API key." };
     } catch (e) {
         const message = e instanceof Error ? e.message : "Network error";

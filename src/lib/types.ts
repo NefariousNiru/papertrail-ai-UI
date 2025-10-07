@@ -36,9 +36,17 @@ export interface Job {
     total?: number;
 }
 
+export type ProgressPhase = "parse" | "extract" | "index" | "verify";
+export interface ProgressPayload {
+  phase: ProgressPhase;
+  processed: number;
+  total: number;
+  ts: number; // epoch seconds
+}
+
 export type StreamEvent =
     | { type: "claim"; payload: Claim }
     | { type: "update"; payload: { claimId: string; patch: Partial<Claim> } }
-    | { type: "progress"; payload: { processed: number; total: number } }
+    | { type: "progress"; payload: ProgressPayload }
     | { type: "done" }
     | { type: "error"; payload: { message: string } };

@@ -1,6 +1,6 @@
 // src/features/stream/useClaimsStreams.ts
 import { useCallback, useRef, useState } from "react";
-import type { Claim, StreamEvent } from "../../lib/types";
+import type { Claim, ProgressPayload, StreamEvent } from "../../lib/types";
 import { streamClaims } from "../../lib/apiClient";
 
 /**
@@ -15,7 +15,7 @@ export function useClaimsStream() {
     const mapRef = useRef<Map<string, Claim>>(new Map());
 
     const [claims, setClaims] = useState<ReadonlyArray<Claim>>([]);
-    const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
+    const [progress, setProgress] = useState<ProgressPayload | null>(null);
     const [error, setError] = useState<string>("");
 
     const stop = useCallback(() => {
@@ -51,7 +51,7 @@ export function useClaimsStream() {
                     mapRef.current.set(evt.payload.id, evt.payload);
                     setClaims(Array.from(mapRef.current.values()));
                 } else if (evt.type === "progress") {
-                    setProgress({ processed: evt.payload.processed, total: evt.payload.total });
+                    setProgress(evt.payload);
                 } else if (evt.type === "error") {
                     setError(evt.payload.message);
                 }
