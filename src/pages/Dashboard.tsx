@@ -11,10 +11,10 @@ import { useClaimsStream } from "../features/stream/useClaimsStreams";
 import ParseProgressBar from "../components/common/ParseProgressBar";
 
 /**
- * Flow:
- * - Start stream after upload OR resume from saved jobId.
- * - Right panel shows per-claim actions (verify).
- * - Export buttons let users download results; no server persistence.
+ * Grouped layout (wide):
+ * - 12-col grid. Sidebar = 3 cols; Content = 9 cols.
+ * - Inside content: 3 equal columns for Cited / Weakly / Uncited.
+ * - Each column has its own scroll (max-h 74vh) and sticky header.
  */
 export function Dashboard() {
   const { claudeApiKey } = useApiKey();
@@ -26,7 +26,6 @@ export function Dashboard() {
     [claims, selectedId]
   );
 
-  // Resume from saved jobId on load
   useEffect(() => {
     const jobId = localStorage.getItem("papertrail_job_id");
     if (claudeApiKey && jobId) {
@@ -46,10 +45,24 @@ export function Dashboard() {
     setClaims(next);
   };
 
+  // Group claims by status
+  const groups = useMemo(() => {
+    const cited: Claim[] = [];
+    const weakly: Claim[] = [];
+    const uncited: Claim[] = [];
+    for (const c of claims) {
+      if (c.status === "cited") cited.push(c);
+      else if (c.status === "weakly_cited") weakly.push(c);
+      else uncited.push(c);
+    }
+    return { cited, weakly, uncited };
+  }, [claims]);
+
   return (
     <AppShell title="Dashboard">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="space-y-6 md:col-span-1">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        {/* Sidebar */}
+        <div className="space-y-6 xl:col-span-3">
           <PaperUploadCard onJob={onJob} />
 
           <div className="card p-4">
@@ -90,12 +103,44 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="md:col-span-2">
-          <ClaimList
-            claims={claims}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
+        {/* Content */}
+        <div className="xl:col-span-9">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            {/* Column component helper */}
+            <Column
+              title="CITED"
+              count={groups.cited.length}
+              children={
+                <ClaimList
+                  claims={groups.cited}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                />
+              }
+            />
+            <Column
+              title="WEAKLY CITED"
+              count={groups.weakly.length}
+              children={
+                <ClaimList
+                  claims={groups.weakly}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                />
+              }
+            />
+            <Column
+              title="UNCITED"
+              count={groups.uncited.length}
+              children={
+                <ClaimList
+                  claims={groups.uncited}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                />
+              }
+            />
+          </div>
         </div>
       </div>
 
@@ -107,5 +152,35 @@ export function Dashboard() {
         />
       )}
     </AppShell>
+  );
+}
+
+/** Reusable column with sticky header + independent scroll */
+function Column({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex flex-col h-[80vh]">
+      {/* Scrollable region */}
+      <div className="overflow-y-auto flex-1">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[rgba(19,23,32,0.85)] backdrop-blur-md">
+          <h3
+            className="text-sm tracking-wide"
+            style={{ letterSpacing: "0.06em" }}
+          >
+            {title}
+          </h3>
+          <span className="text-xs subtle">{count}</span>
+        </header>
+
+        <div className="px-3 pb-4 pt-3">{children}</div>
+      </div>
+    </section>
   );
 }

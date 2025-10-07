@@ -8,6 +8,7 @@ import { useApiKey } from "../../features/api-key/useApiKey";
 /**
  * Flow:
  * - Larger modal (max-w-4xl) with generous spacing and readable typography.
+ * - Modal content scrolls internally (max-h 85vh) so it never cuts off screen.
  * - Evidence is displayed inline as roomy cards (no collapsing).
  * - Actions: Upload & Verify, or Skip (skip is UI-only/ephemeral by design).
  */
@@ -33,7 +34,6 @@ export function ClaimDetailModal({
 
   async function handleVerify(file: File): Promise<void> {
     if (!claim) {
-      // <— narrow here too
       setError("No claim selected.");
       return;
     }
@@ -51,7 +51,6 @@ export function ClaimDetailModal({
     setBusy(true);
 
     try {
-      // get current job context
       const jobId = localStorage.getItem("papertrail_job_id") ?? "";
       if (!jobId) {
         setError("Missing job context. Please re-upload the paper.");
@@ -78,7 +77,7 @@ export function ClaimDetailModal({
   }
 
   function handleSkip(): void {
-    if (!claim) return; // <— narrow here
+    if (!claim) return;
     const c = claim;
     onUpdate({
       ...c,
@@ -98,11 +97,14 @@ export function ClaimDetailModal({
       aria-modal="true"
       aria-label="Claim details"
       onClick={(e) => {
-        // close when clicking backdrop
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="card w-full max-w-4xl p-8" style={{ gap: "1rem" }}>
+      {/* Scrollable modal card */}
+      <div
+        className="card w-full max-w-4xl p-8 max-h-[85vh] overflow-y-auto"
+        style={{ gap: "1rem" }}
+      >
         {/* Header */}
         <div className="flex items-start justify-between gap-6">
           <div>
@@ -154,7 +156,7 @@ export function ClaimDetailModal({
           )}
         </section>
 
-        {/* Evidence (inline, spacious) */}
+        {/* Evidence */}
         <section className="mt-8">
           <div className="flex items-baseline justify-between">
             <div className="text-sm subtle mb-2">

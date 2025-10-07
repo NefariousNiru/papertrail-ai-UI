@@ -25,7 +25,7 @@ export function AppShell({ title, children }: AppShellProps) {
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div
               style={{
@@ -45,7 +45,7 @@ export function AppShell({ title, children }: AppShellProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">{children}</main>
     </div>
   );
 }
