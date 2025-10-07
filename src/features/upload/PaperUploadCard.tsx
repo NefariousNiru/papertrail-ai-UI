@@ -21,6 +21,9 @@ export function PaperUploadCard({ onJob }: PaperUploadCardProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const handlePick = () => inputRef.current?.click();
 
+  // Fast client-side size guard (10 MB)
+  const MAX_BYTES = 10 * 1024 * 1024;
+
   const handleFile = async (file: File) => {
     if (!claudeApiKey) {
       setError("API key missing. Please set your Claude API key on Home.");
@@ -30,6 +33,11 @@ export function PaperUploadCard({ onJob }: PaperUploadCardProps) {
       setError("Selected file is empty.");
       return;
     }
+    if (file.size > MAX_BYTES) {
+      setError("File exceeds 10 MB.");
+      return;
+    }
+
     setError(null);
     setBusy(true);
     setFileName(file.name);
@@ -39,6 +47,9 @@ export function PaperUploadCard({ onJob }: PaperUploadCardProps) {
       localStorage.setItem("papertrail_job_id", jobId);
       onJob(jobId);
     } catch (e) {
+      // apiClient.safeErr returns user-friendly strings like:
+      //  - "File exceeds 10 MB."  (413)
+      //  - "Too many requests. Try again in 60s." (429)
       const message = e instanceof Error ? e.message : "Upload failed.";
       setError(message);
     } finally {

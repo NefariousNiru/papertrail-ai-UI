@@ -187,10 +187,57 @@ export async function verifyClaim(
 /* ---------- helpers ---------- */
 
 async function safeErr(res: Response): Promise<string> {
+    // Backend may send:
+    //  - { ok:false, error:"file_too_large", maxMb: 10 }
+    //  - { ok:false, error:"rate_limited", message:"Too many requests. Try again in 60s." }
+    //  - { detail: {...} } (HTTPException)
+    //  - { detail: "..." }
+
+    type ErrorShape = {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        maxMb?: number;
+        detail?: string | Record<string, unknown>;
+    };
+
+    let body: unknown;
     try {
-        const j = await res.json() as { detail?: string; error?: string };
-        return j.detail || j.error || `${res.status} ${res.statusText}`;
+        body = await res.json();
     } catch {
-        return `${res.status} ${res.statusText}`;
+        body = null;
     }
+
+    const retryAfter = res.headers.get("Retry-After");
+
+    if (body && typeof body === "object") {
+        const d =
+            (body as ErrorShape).detail && typeof (body as ErrorShape).detail === "object"
+                ? (body as ErrorShape).detail
+                : (body as ErrorShape).detail ?? body;
+
+        if (typeof d === "string") return d;
+
+        if (d && typeof d === "object") {
+            const error = (d as ErrorShape).error;
+            const message = (d as ErrorShape).message;
+            const maxMb = (d as ErrorShape).maxMb;
+
+            if (error === "file_too_large") {
+                const mb = typeof maxMb === "number" ? maxMb : 10;
+                return `File exceeds ${mb} MB.`;
+            }
+
+            if (error === "rate_limited") {
+                const tail = retryAfter ? ` Try again in ${retryAfter}s.` : "";
+                return message || `Too many requests.${tail}`;
+            }
+
+            if (message) return String(message);
+            if (error) return String(error);
+        }
+    }
+
+    return `${res.status} ${res.statusText}`;
 }
+
