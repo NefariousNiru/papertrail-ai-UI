@@ -32,10 +32,10 @@ export function Home() {
     {
       id: 4,
       title: "Act on gaps",
-      desc: "For uncited claims, review suggested references and update your paper.",
+      desc: "For uncited claims, review suggested references and update your paper. We store your answers for 2 hours",
     },
   ];
-  
+
   return (
     <>
       <div className="relative min-h-screen">
@@ -48,22 +48,19 @@ export function Home() {
           }}
         />
 
-        <div className="mx-auto max-w-5xl px-4 pt-28 text-center">
+        <div className="mx-auto max-w-5xl px-4 pt-28 pb-28 text-center">
           <h1 className="mx-auto max-w-3xl text-5xl font-extrabold tracking-tight">
-            Verify claims. Build trust.
+            Verify claims. Build trust. Save time.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg subtle">
             PaperTrail AI highlights cited, weakly cited, and uncited claims -
-            then verifies them semantically against their sources.
+            then verifies them semantically against their sources. 
           </p>
 
           <div className="mt-9 flex items-center justify-center gap-4">
             <button className="btn btn-accent" onClick={() => setOpen(true)}>
-              Get started
+              Get Started with PaperTrail AI
             </button>
-            <a className="btn btn-outline" href="#how-it-works">
-              How it works
-            </a>
           </div>
 
           <div className="mt-16 grid gap-4 sm:grid-cols-3">

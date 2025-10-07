@@ -1,6 +1,7 @@
 // src/components/layout/AppShell.tsx
 import type { PropsWithChildren } from "react";
 import { ThemeSwitcher } from "../../features/theme/ThemeSwitcher";
+import { ResetApiKeyButton } from "../../features/api-key/ResetApiKeyButton";
 
 interface AppShellProps extends PropsWithChildren {
   title: string;
@@ -37,8 +38,9 @@ export function AppShell({ title, children }: AppShellProps) {
             <span className="text-lg font-semibold">PaperTrail AI {title}</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             <ThemeSwitcher />
+            <ResetApiKeyButton />
           </div>
         </div>
       </header>
