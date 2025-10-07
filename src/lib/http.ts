@@ -69,7 +69,6 @@ export async function streamClaims(
     for (let i = 0; i < demoClaims.length; i += 1) {
         onEvent({ type: "claim", payload: demoClaims[i] });
         onEvent({ type: "progress", payload: { processed: i + 1, total: demoClaims.length } });
-        // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, 450));
     }
     onEvent({ type: "done" });
