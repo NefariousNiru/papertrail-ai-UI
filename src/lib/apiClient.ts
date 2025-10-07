@@ -159,15 +159,18 @@ export interface VerifyResult {
 }
 
 export async function verifyClaim(
+    jobId: string,
     claimId: string,
     file: File,
     apiKey: string
 ): Promise<VerifyResult> {
+    if (!jobId.trim()) throw new Error("Missing jobId.");
     if (!claimId.trim()) throw new Error("Missing claimId.");
     if (!file) throw new Error("Missing verification PDF.");
     if (!apiKey.trim()) throw new Error("Missing API key.");
 
     const form = new FormData();
+    form.append("jobId", jobId);
     form.append("claimId", claimId);
     form.append("file", file);
     form.append("apiKey", apiKey);

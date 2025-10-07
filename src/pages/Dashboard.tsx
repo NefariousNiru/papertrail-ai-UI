@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import { PaperUploadCard } from "../features/upload/PaperUploadCard";
 import { ClaimList } from "../components/claims/ClaimList";
-import { ClaimDetailPanel } from "../components/claims/ClaimDetailPanel";
+import { ClaimDetailModal } from "../components/claims/ClaimDetailModal";
 import { useApiKey } from "../features/api-key/useApiKey";
 import type { Claim } from "../lib/types";
 import { downloadJSON, downloadMarkdown } from "../lib/export";
@@ -118,7 +118,7 @@ export function Dashboard() {
       </div>
 
       {selected && (
-        <ClaimDetailPanel
+        <ClaimDetailModal
           claim={selected}
           onClose={() => setSelectedId(null)}
           onUpdate={onUpdateClaim}

@@ -33,7 +33,9 @@ export function ClaimRow({ claim, selected = false }: ClaimRowProps) {
       </div>
 
       <div className="prose prose-invert max-w-none prose-p:my-0">
-        <ReactMarkdown>{claim.text}</ReactMarkdown>
+        <div style={{ fontSize: "1rem", lineHeight: 1.5 }}>
+          <ReactMarkdown>{claim.text}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );

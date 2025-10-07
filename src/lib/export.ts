@@ -29,20 +29,40 @@ function trigger(url: string, filename: string) {
 
 function renderClaimsMd(claims: ReadonlyArray<Claim>): string {
     const lines: string[] = ["# PaperTrail AI — Claims Report", ""];
+
     for (const c of claims) {
-        lines.push(`## ${badge(c.status)} ${escapeMd(c.text)}`);
+        const status = statusEmoji(c.status);
+        const header = `${status} ${escapeMd(c.text)}`;
+        lines.push(`## ${header}`);
+
+        lines.push(`- **Status:** ${c.status}`);
         if (c.verdict) lines.push(`- **Verdict:** ${c.verdict}`);
         if (typeof c.confidence === "number") lines.push(`- **Confidence:** ${c.confidence.toFixed(2)}`);
+
+        if (c.evidence && c.evidence.length > 0) {
+            lines.push("", "### Evidence");
+            for (const ev of c.evidence) {
+                const bits: string[] = [];
+                if (ev.section) bits.push(`Section ${ev.section}`);
+                if (typeof ev.paragraph === "number") bits.push(`Para ${ev.paragraph}`);
+                if (typeof ev.page === "number") bits.push(`Page ${ev.page}`);
+                const where = bits.length ? ` (${bits.join(", ")})` : "";
+                const title = ev.paperTitle ?? "Source PDF";
+                lines.push(`- ${title}${where}${ev.excerpt ? ` — “${escapeMd(ev.excerpt)}”` : ""}`);
+            }
+        }
+
         if (c.reasoningMd) {
             lines.push("", "### Reasoning", c.reasoningMd);
         }
-        lines.push("");
+
+        lines.push(""); // spacer
     }
     return lines.join("\n");
 }
 
-function badge(status: Claim["status"]): string {
-    switch (status) {
+function statusEmoji(s: Claim["status"]): string {
+    switch (s) {
         case "cited": return "🟩";
         case "weakly_cited": return "🟨";
         case "uncited": return "🟥";
