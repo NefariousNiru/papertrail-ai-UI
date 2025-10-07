@@ -1,23 +1,18 @@
 // src/features/upload/PaperUploadCard.tsx
 import { useRef, useState } from "react";
-import { uploadPaper, streamClaims } from "../../lib/http";
+import { uploadPaper } from "../../lib/apiClient";
 import { useApiKey } from "../api-key/useApiKey";
-import type { Claim } from "../../lib/types";
 
 interface PaperUploadCardProps {
-  onClaims: (claims: ReadonlyArray<Claim>) => void;
-  onProgress: (p: { processed: number; total: number }) => void;
+  onJob: (jobId: string) => void;
 }
 
 /**
  * Flow:
- * - Pick file, start mock upload, stream claims
- * - Solid surfaces with clear borders and visible error state
+ * - Pick file → POST /upload-paper → returns jobId.
+ * - Save jobId to localStorage for resume and inform parent to start stream.
  */
-export function PaperUploadCard({
-  onClaims,
-  onProgress,
-}: PaperUploadCardProps) {
+export function PaperUploadCard({ onJob }: PaperUploadCardProps) {
   const { claudeApiKey } = useApiKey();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
@@ -40,22 +35,9 @@ export function PaperUploadCard({
     setFileName(file.name);
 
     try {
-      const { job } = await uploadPaper({ file, claudeApiKey });
-      const buffered: Claim[] = [];
-
-      await streamClaims({ jobId: job.id, claudeApiKey }, (event) => {
-        if (event.type === "claim") {
-          buffered.push(event.payload);
-          onClaims([...buffered]);
-        } else if (event.type === "progress") {
-          onProgress({
-            processed: event.payload.processed,
-            total: event.payload.total,
-          });
-        } else if (event.type === "error") {
-          setError(event.payload.message);
-        }
-      });
+      const { jobId } = await uploadPaper(file, claudeApiKey);
+      localStorage.setItem("papertrail_job_id", jobId);
+      onJob(jobId);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Upload failed.";
       setError(message);

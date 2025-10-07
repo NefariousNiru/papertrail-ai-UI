@@ -1,7 +1,7 @@
 // src/features/api-key/ApiKeyModal.tsx
 import { useEffect, useRef, useState } from "react";
 import { useApiKey } from "./useApiKey";
-import { validateClaudeKeyViaBackend } from "../../lib/http";
+import { validateClaudeKeyViaBackend } from "../../lib/apiClient";
 
 interface ApiKeyModalProps {
   open: boolean;

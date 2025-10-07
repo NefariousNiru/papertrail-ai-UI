@@ -9,3 +9,4 @@ if (!rawBaseUrl || typeof rawBaseUrl !== "string" || !/^https?:\/\//.test(rawBas
 }
 
 export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "")
+export const API_VERSION = "/api/v1"

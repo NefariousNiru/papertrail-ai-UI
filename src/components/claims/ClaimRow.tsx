@@ -1,21 +1,21 @@
 // src/components/claims/ClaimRow.tsx
 import ReactMarkdown from "react-markdown";
 import type { Claim } from "../../lib/types";
+type VerdictStrict = Exclude<Claim["verdict"], null>;
 
 interface ClaimRowProps {
   claim: Claim;
+  selected?: boolean;
 }
 
-/**
- * Flow:
- * - High-contrast chips
- * - Clear text hierarchy
- */
-export function ClaimRow({ claim }: ClaimRowProps) {
+export function ClaimRow({ claim, selected = false }: ClaimRowProps) {
   const chip = getStatusChip(claim.status);
 
   return (
-    <div className="card p-4 hover:brightness-110">
+    <div
+      className="card p-4 hover:brightness-110"
+      style={selected ? { outline: `2px solid var(--accent)` } : undefined}
+    >
       <div className="mb-2 flex items-center gap-2">
         <span
           className="rounded-md px-2 py-0.5 text-xs"
@@ -27,42 +27,19 @@ export function ClaimRow({ claim }: ClaimRowProps) {
         >
           {chip.label}
         </span>
-        {claim.verdict && <VerdictBadge verdict={claim.verdict} />}
+        {claim.verdict ? (
+          <VerdictBadge verdict={claim.verdict as VerdictStrict} />
+        ) : null}
       </div>
 
       <div className="prose prose-invert max-w-none prose-p:my-0">
         <ReactMarkdown>{claim.text}</ReactMarkdown>
       </div>
-
-      {claim.status === "uncited" &&
-        claim.suggestions &&
-        claim.suggestions.length > 0 && (
-          <div className="mt-3">
-            <div className="text-xs subtle">Suggested citations</div>
-            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-              {claim.suggestions.slice(0, 3).map((s) => (
-                <li key={s.url}>
-                  <a
-                    href={s.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    {s.title}
-                  </a>
-                  {s.venue && <span className="subtle"> · {s.venue}</span>}
-                  {typeof s.year === "number" && (
-                    <span className="subtle"> · {s.year}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
     </div>
   );
 }
 
+/* ... keep getStatusChip and VerdictBadge from your previous version ... */
 function getStatusChip(status: Claim["status"]): {
   label: string;
   bg: string;
@@ -86,9 +63,9 @@ function getStatusChip(status: Claim["status"]): {
   }
 }
 
-function VerdictBadge({ verdict }: { verdict: NonNullable<Claim["verdict"]> }) {
+function VerdictBadge({ verdict }: { verdict: VerdictStrict }) {
   const map: Record<
-    NonNullable<Claim["verdict"]>,
+    VerdictStrict,
     { label: string; bg: string; fg: string; bd: string }
   > = {
     supported: {

@@ -4,15 +4,11 @@ import type { Claim } from "../../lib/types";
 
 interface ClaimListProps {
   claims: ReadonlyArray<Claim>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }
 
-/**
- * Flow comment:
- * Displays the streamed claims as a vertical list.
- * Each row shows status chip and Markdown text (simple for now).
- * Future: clicking a row opens a detail panel for verification actions.
- */
-export function ClaimList({ claims }: ClaimListProps) {
+export function ClaimList({ claims, selectedId, onSelect }: ClaimListProps) {
   if (claims.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-bg-secondary p-6 text-center text-text-secondary">
@@ -24,7 +20,14 @@ export function ClaimList({ claims }: ClaimListProps) {
   return (
     <div className="space-y-3">
       {claims.map((c) => (
-        <ClaimRow key={c.id} claim={c} />
+        <button
+          key={c.id}
+          onClick={() => onSelect(c.id)}
+          className="w-full text-left"
+          aria-label={`Open details for claim ${c.id}`}
+        >
+          <ClaimRow claim={c} selected={selectedId === c.id} />
+        </button>
       ))}
     </div>
   );
