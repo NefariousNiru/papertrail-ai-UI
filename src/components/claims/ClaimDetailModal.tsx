@@ -126,7 +126,7 @@ export function ClaimDetailModal({
               </div>
             ) : (
               <p className="text-sm subtle">
-                No reasoning available yet. Verify to generate it.
+                No reasoning available yet. Verify by uploading a supporting doc to generate it.
               </p>
             )}
           </section>
@@ -161,8 +161,7 @@ export function ClaimDetailModal({
               </ul>
             ) : (
               <p className="text-sm subtle">
-                No explicit references provided. (Backend can return evidence[]
-                later.)
+                No explicit references provided.
               </p>
             )}
           </section>
