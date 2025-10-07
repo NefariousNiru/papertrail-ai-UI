@@ -1,6 +1,6 @@
 // src/lib/apiClient.ts
 import { API_BASE_URL, API_VERSION } from "./config";
-import type { Claim, StreamEvent } from "./types";
+import type { Claim, Evidence, StreamEvent } from "./types";
 
 /**
  * Flow:
@@ -156,6 +156,7 @@ export interface VerifyResult {
     verdict: Claim["verdict"];
     confidence: number;
     reasoningMd: string;
+    evidence?: ReadonlyArray<Evidence>;
 }
 
 export async function verifyClaim(
