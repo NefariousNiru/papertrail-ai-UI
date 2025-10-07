@@ -48,7 +48,7 @@ export function Home() {
           }}
         />
 
-        <div className="mx-auto max-w-5xl px-4 pt-28 text-center">
+        <div className="mx-auto max-w-5xl px-4 pt-28 pb-28 text-center">
           <h1 className="mx-auto max-w-3xl text-5xl font-extrabold tracking-tight">
             Verify claims. Build trust. Save time.
           </h1>
