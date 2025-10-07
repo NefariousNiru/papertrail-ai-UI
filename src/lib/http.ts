@@ -1,12 +1,9 @@
 // src/lib/http.ts
+import { API_BASE_URL } from "./config";
 import type { Claim, Job, StreamEvent } from "./types";
 
-/**
- * Flow comment:
- * http.ts is a centralized place for API calls.
- * For now, we mock endpoints so the UI flows end-to-end.
- * Later, replace these with real fetch() calls to your FastAPI.
- */
+/* ---------------- existing mocks (keep) ---------------- */
+
 export interface UploadPaperParams {
     file: File;
     claudeApiKey: string;
@@ -22,10 +19,7 @@ export async function uploadPaper(params: UploadPaperParams): Promise<UploadPape
         throw new Error("Missing file or API key.");
     }
 
-    // TODO: replace with real backend call
-    // const res = await fetch("/upload-paper", { ... });
-    // return (await res.json()) as UploadPaperResult;
-
+    // TODO: Replace with real backend call
     return Promise.resolve({
         job: { id: crypto.randomUUID(), status: "streaming", processed: 0, total: 5 },
     });
@@ -36,18 +30,12 @@ export interface StreamClaimsParams {
     claudeApiKey: string;
 }
 
-/**
- * Mock NDJSON stream generator for demo.
- * Replace with fetch(`/stream-claims?jobId=${jobId}`) and pipe reader.
- */
 export async function streamClaims(
     params: StreamClaimsParams,
     onEvent: (event: StreamEvent) => void
 ): Promise<void> {
     const { jobId, claudeApiKey } = params;
-    if (!jobId || !claudeApiKey) {
-        throw new Error("Missing jobId or API key.");
-    }
+    if (!jobId || !claudeApiKey) throw new Error("Missing jobId or API key.");
 
     const demoClaims: Claim[] = [
         {
@@ -78,12 +66,58 @@ export async function streamClaims(
         },
     ];
 
-    // Simulate streamed events
     for (let i = 0; i < demoClaims.length; i += 1) {
-        const claim = demoClaims[i];
-        onEvent({ type: "claim", payload: claim });
+        onEvent({ type: "claim", payload: demoClaims[i] });
         onEvent({ type: "progress", payload: { processed: i + 1, total: demoClaims.length } });
+        // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, 450));
     }
     onEvent({ type: "done" });
+}
+
+/* ---------------- backend validator (new) ---------------- */
+
+export interface ValidateResult {
+    ok: boolean;
+    status: number;
+    error?: string;
+}
+
+/**
+ * Flow:
+ * - POST to your backend validator (body-only API key).
+ * - Treat any 2xx as valid; 4xx as invalid; others as error.
+ * - Endpoint contract (recommended):
+ *   - 200 OK: { ok: true }
+ *   - 400/401/403: { ok: false, error?: string }
+ */
+export async function validateClaudeKeyViaBackend(key: string): Promise<ValidateResult> {
+    const payload = { apiKey: key };
+    if (key.trim().length === 0) return { ok: false, status: 0, error: "Empty API key." };
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/validate-key`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+            // Note: do NOT put the key in headers; keep it in body per your policy.
+            credentials: "include", // harmless if same-origin; useful if you add auth later
+        });
+
+        if (res.ok) {
+            return { ok: true, status: res.status };
+        }
+
+        let msg = "";
+        try {
+            const data: { ok?: boolean; error?: string } = await res.json();
+            msg = data.error ?? "";
+        } catch {
+            msg = await res.text();
+        }
+        return { ok: false, status: res.status, error: msg || "Invalid API key." };
+    } catch (e) {
+        const message = e instanceof Error ? e.message : "Network error";
+        return { ok: false, status: 0, error: message };
+    }
 }
