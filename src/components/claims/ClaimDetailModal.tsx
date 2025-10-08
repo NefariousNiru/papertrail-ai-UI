@@ -254,10 +254,9 @@ export function ClaimDetailModal({
         {isUncitedish(claim.status) && (
           <section className="mt-8">
             <div className="flex items-center justify-between">
-              // TODO - to build this the backend needs to search with keywords not natural language
               <div className="text-sm subtle mb-2">Suggested citations. (Coming Soon...)</div>
             </div>
-
+            {/* TODO - to build this the backend needs to search with keywords not natural language */}
             {ssLoading && (
               <div className="flex items-center gap-2 rounded-lg bg-neutral-900 p-3 text-sm text-neutral-300">
                 <svg
