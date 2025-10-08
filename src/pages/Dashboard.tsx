@@ -14,11 +14,12 @@ import ParseProgressBar from "../components/common/ParseProgressBar";
  * Grouped layout (wide):
  * - 12-col grid. Sidebar = 3 cols; Content = 9 cols.
  * - Inside content: 3 equal columns for Cited / Weakly / Uncited.
- * - Each column has its own scroll (max-h 74vh) and sticky header.
+ * - Each column has its own scroll (max-h 80vh) and sticky header.
  */
 export function Dashboard() {
   const { claudeApiKey } = useApiKey();
-  const { claims, progress, error, start, stop, setClaims } = useClaimsStream();
+  const { claims, progress, error, isDone, start, stop, setClaims } =
+    useClaimsStream();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = useMemo<Claim | null>(
@@ -37,6 +38,7 @@ export function Dashboard() {
 
   const onJob = (jobId: string) => {
     if (!claudeApiKey) return;
+    // start() will reset state for a new job, so old claims vanish immediately
     start(jobId, claudeApiKey);
   };
 
@@ -45,7 +47,6 @@ export function Dashboard() {
     setClaims(next);
   };
 
-  // Group claims by status
   const groups = useMemo(() => {
     const cited: Claim[] = [];
     const weakly: Claim[] = [];
@@ -69,7 +70,7 @@ export function Dashboard() {
             <div className="mb-2 text-sm subtle">
               Parsing & claim extraction
             </div>
-            <ParseProgressBar progress={progress} />
+            <ParseProgressBar progress={progress} done={isDone} />
 
             {error && (
               <div
@@ -106,40 +107,27 @@ export function Dashboard() {
         {/* Content */}
         <div className="xl:col-span-9">
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            {/* Column component helper */}
-            <Column
-              title="CITED"
-              count={groups.cited.length}
-              children={
-                <ClaimList
-                  claims={groups.cited}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
-              }
-            />
-            <Column
-              title="WEAKLY CITED"
-              count={groups.weakly.length}
-              children={
-                <ClaimList
-                  claims={groups.weakly}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
-              }
-            />
-            <Column
-              title="UNCITED"
-              count={groups.uncited.length}
-              children={
-                <ClaimList
-                  claims={groups.uncited}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
-              }
-            />
+            <Column title="CITED" count={groups.cited.length}>
+              <ClaimList
+                claims={groups.cited}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+              />
+            </Column>
+            <Column title="WEAKLY CITED" count={groups.weakly.length}>
+              <ClaimList
+                claims={groups.weakly}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+              />
+            </Column>
+            <Column title="UNCITED" count={groups.uncited.length}>
+              <ClaimList
+                claims={groups.uncited}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+              />
+            </Column>
           </div>
         </div>
       </div>
@@ -155,7 +143,6 @@ export function Dashboard() {
   );
 }
 
-/** Reusable column with sticky header + independent scroll */
 function Column({
   title,
   count,
@@ -167,7 +154,6 @@ function Column({
 }) {
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex flex-col h-[80vh]">
-      {/* Scrollable region */}
       <div className="overflow-y-auto flex-1">
         <header className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[rgba(19,23,32,0.85)] backdrop-blur-md">
           <h3
@@ -178,7 +164,6 @@ function Column({
           </h3>
           <span className="text-xs subtle">{count}</span>
         </header>
-
         <div className="px-3 pb-4 pt-3">{children}</div>
       </div>
     </section>

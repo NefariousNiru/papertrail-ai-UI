@@ -1,13 +1,13 @@
 // src/features/stream/useClaimsStreams.ts
 import { useCallback, useRef, useState } from "react";
-import type { Claim, ProgressPayload, StreamEvent } from "../../lib/types";
+import type { Claim, StreamEvent, ProgressPayload } from "../../lib/types";
 import { streamClaims } from "../../lib/apiClient";
 
 /**
- * Flow:
- * - Start/stop are stable (useCallback with empty deps).
- * - Guards against starting the same job twice.
- * - Uses an internal ref map so new claims don't recreate `start`.
+ * Stream manager:
+ * - Resets state on new job (so old claims vanish when you upload again)
+ * - Tracks "done" so the progress bar can show Completed
+ * - Internal mapRef avoids quadratic re-renders
  */
 export function useClaimsStream() {
     const cancelRef = useRef<(() => void) | null>(null);
@@ -17,6 +17,7 @@ export function useClaimsStream() {
     const [claims, setClaims] = useState<ReadonlyArray<Claim>>([]);
     const [progress, setProgress] = useState<ProgressPayload | null>(null);
     const [error, setError] = useState<string>("");
+    const [isDone, setIsDone] = useState<boolean>(false);
 
     const stop = useCallback(() => {
         cancelRef.current?.();
@@ -24,25 +25,31 @@ export function useClaimsStream() {
         activeJobRef.current = null;
     }, []);
 
+    const resetState = useCallback(() => {
+        mapRef.current = new Map();
+        setClaims([]);
+        setProgress(null);
+        setError("");
+        setIsDone(false);
+    }, []);
+
     const start = useCallback((jobId: string, apiKey: string) => {
         if (!jobId || !apiKey) return;
 
-        // same job? do nothing
+        // same job: ignore
         if (activeJobRef.current === jobId) return;
 
-        // different active job? stop it first
+        // switching jobs: stop & hard reset
         if (activeJobRef.current && activeJobRef.current !== jobId) {
             stop();
+            resetState();
+        } else {
+            // first start this session
+            resetState();
         }
 
         setError("");
         activeJobRef.current = jobId;
-        // seed map from current UI state once
-        if (mapRef.current.size === 0 && claims.length > 0) {
-            const seed = new Map<string, Claim>();
-            for (const c of claims) seed.set(c.id, c);
-            mapRef.current = seed;
-        }
 
         const { cancel } = streamClaims(
             { jobId, apiKey },
@@ -52,6 +59,9 @@ export function useClaimsStream() {
                     setClaims(Array.from(mapRef.current.values()));
                 } else if (evt.type === "progress") {
                     setProgress(evt.payload);
+                    setIsDone(false);
+                } else if (evt.type === "done") {
+                    setIsDone(true);
                 } else if (evt.type === "error") {
                     setError(evt.payload.message);
                 }
@@ -60,7 +70,7 @@ export function useClaimsStream() {
         );
         cancelRef.current = cancel;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // no claims/stop deps -> stable across renders
+    }, []);
 
     // allow parent to push updated claims (e.g., after verify)
     const setClaimsExternal = useCallback((next: ReadonlyArray<Claim>) => {
@@ -68,5 +78,16 @@ export function useClaimsStream() {
         setClaims(next);
     }, []);
 
-    return { claims, progress, error, start, stop, setClaims: setClaimsExternal, setProgress, setError };
+    return {
+        claims,
+        progress,
+        error,
+        isDone,
+        start,
+        stop,
+        setClaims: setClaimsExternal,
+        setProgress,
+        setError,
+    };
 }
+
