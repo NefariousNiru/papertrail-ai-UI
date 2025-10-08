@@ -1,6 +1,6 @@
 // src/lib/apiClient.ts
 import { API_BASE_URL, API_VERSION } from "./config";
-import type { Claim, Evidence, StreamEvent } from "./types";
+import type { Suggestion, Claim, Evidence, StreamEvent } from "./types";
 
 /**
  * Flow:
@@ -182,6 +182,23 @@ export async function verifyClaim(
 
     const data: VerifyResult = await res.json();
     return data;
+}
+
+export async function suggestCitations(claimText: string): Promise<Suggestion[]> {
+    const url = joinUrl(API_BASE_URL, API_VERSION, "/suggest-citations");
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claimText }),
+    });
+
+    if (!res.ok) {
+        // Keep it quiet: UI will show a small inline error
+        return [];
+    }
+
+    const data = await res.json().catch(() => ({ suggestions: [] }));
+    return Array.isArray(data?.suggestions) ? data.suggestions : [];
 }
 
 /* ---------- helpers ---------- */

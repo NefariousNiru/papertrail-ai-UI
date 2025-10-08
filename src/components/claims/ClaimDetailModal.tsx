@@ -1,8 +1,8 @@
 // src/components/claims/ClaimDetailModal.tsx
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import type { Claim, Evidence } from "../../lib/types";
-import { verifyClaim } from "../../lib/apiClient";
+import type { Claim, Evidence, Suggestion } from "../../lib/types";
+import { verifyClaim, suggestCitations } from "../../lib/apiClient";
 import { useApiKey } from "../../features/api-key/useApiKey";
 
 /**
@@ -11,12 +11,16 @@ import { useApiKey } from "../../features/api-key/useApiKey";
  * - Modal content scrolls internally (max-h 85vh) so it never cuts off screen.
  * - Evidence is displayed inline as roomy cards (no collapsing).
  * - Actions: Upload & Verify, or Skip (skip is UI-only/ephemeral by design).
+ * - For uncited/weakly_cited: auto-fetch and display citation suggestions.
  */
 interface ClaimDetailModalProps {
   claim: Claim;
   onClose: () => void;
   onUpdate: (updated: Claim) => void;
 }
+
+const isUncitedish = (s?: Claim["status"]) =>
+  s === "uncited" || s === "weakly_cited";
 
 export function ClaimDetailModal({
   claim,
@@ -26,24 +30,52 @@ export function ClaimDetailModal({
   const { claudeApiKey } = useApiKey();
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  if (!claim) return null;
+  // Suggestions state (local fetch state; persisted on the claim via onUpdate)
+  const [ssLoading, setSsLoading] = useState(false);
+  const [ssError, setSsError] = useState<string | null>(null);
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const pickFile = () => inputRef.current?.click();
 
-  async function handleVerify(file: File): Promise<void> {
-    if (!claim) {
-      setError("No claim selected.");
-      return;
-    }
-    const c = claim;
+  // Auto-fetch suggestions on open for uncited/weakly_cited if not already present on the claim
+  useEffect(() => {
+    let cancelled = false;
 
+    async function loadSuggestions() {
+      if (!isUncitedish(claim.status)) return;
+      if (claim.suggestions && claim.suggestions.length > 0) return;
+
+      setSsError(null);
+      setSsLoading(true);
+      try {
+        const items = await suggestCitations(claim.text); // returns Suggestion[]
+        if (!cancelled && items.length > 0) {
+          // Attach suggestions to the claim so they persist while app is open
+          const merged = dedupeByUrl([...(claim.suggestions ?? []), ...items]);
+          onUpdate({ ...claim, suggestions: merged });
+        }
+      } catch {
+        if (!cancelled) setSsError("Could not fetch suggestions.");
+      } finally {
+        if (!cancelled) setSsLoading(false);
+      }
+    }
+
+    loadSuggestions();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claim?.id]);
+
+  async function handleVerify(file: File): Promise<void> {
     if (!claudeApiKey) {
       setError("API key missing.");
       return;
     }
-    if (file.size === 0) {
+    if (!file || file.size === 0) {
       setError("Selected file is empty.");
       return;
     }
@@ -61,12 +93,12 @@ export function ClaimDetailModal({
       const res = await verifyClaim(jobId, claim.id, file, claudeApiKey);
 
       onUpdate({
-        ...c,
+        ...claim,
         verdict: res.verdict,
         confidence: res.confidence,
         reasoningMd: res.reasoningMd,
         sourceUploaded: true,
-        evidence: res.evidence ?? c.evidence,
+        evidence: res.evidence ?? claim.evidence,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Verification failed.";
@@ -77,17 +109,17 @@ export function ClaimDetailModal({
   }
 
   function handleSkip(): void {
-    if (!claim) return;
-    const c = claim;
     onUpdate({
-      ...c,
+      ...claim,
       verdict: "skipped",
       reasoningMd:
-        c.reasoningMd ?? "User chose to skip verification for this claim.",
-      sourceUploaded: c.sourceUploaded ?? false,
+        claim.reasoningMd ?? "User chose to skip verification for this claim.",
+      sourceUploaded: claim.sourceUploaded ?? false,
     });
     onClose();
   }
+
+  if (!claim) return null;
 
   return (
     <div
@@ -217,6 +249,109 @@ export function ClaimDetailModal({
             </p>
           )}
         </section>
+
+        {/* Suggestions */}
+        {isUncitedish(claim.status) && (
+          <section className="mt-8">
+            <div className="flex items-center justify-between">
+              // TODO - to build this the backend needs to search with keywords not natural language
+              <div className="text-sm subtle mb-2">Suggested citations. (Coming Soon...)</div>
+            </div>
+
+            {ssLoading && (
+              <div className="flex items-center gap-2 rounded-lg bg-neutral-900 p-3 text-sm text-neutral-300">
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  />
+                  <path
+                    className="opacity-75"
+                    d="M4 12a8 8 0 018-8"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  />
+                </svg>
+                Fetching suggestions for citation… please wait
+              </div>
+            )}
+
+            {!ssLoading && ssError && (
+              <div className="rounded-lg bg-neutral-900 p-3 text-sm text-red-400">
+                {ssError}
+              </div>
+            )}
+
+            {!ssLoading &&
+              !ssError &&
+              (claim.suggestions?.length ?? 0) === 0 && (
+                <div className="rounded-lg bg-neutral-900 p-3 text-sm text-neutral-400">
+                  No suggestions found for this claim.
+                </div>
+              )}
+
+            {!ssLoading && !ssError && (claim.suggestions?.length ?? 0) > 0 && (
+              <ul className="space-y-2">
+                {claim.suggestions!.map((s: Suggestion, i: number) => (
+                  <li
+                    key={`${s.url || s.title}-${i}`}
+                    className="rounded-lg border border-neutral-800 bg-neutral-900 p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium text-neutral-100">
+                          {s.title || "Untitled"}
+                        </div>
+                        <div className="text-xs text-neutral-400">
+                          {(s.authors || "Unknown authors") +
+                            (s.year ? ` · ${s.year}` : "")}
+                        </div>
+                      </div>
+                      {s.url && (
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800"
+                        >
+                          View
+                          <svg
+                            className="h-3 w-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <path
+                              d="M14 3h7v7M21 3l-9 9"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M5 12v7h7"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         {/* Actions */}
         <div className="mt-8 flex flex-wrap justify-end gap-3">
@@ -354,4 +489,18 @@ function getStatusChip(status: Claim["status"]): {
     default:
       return { label: "Unknown", bg: "#222833", fg: "#b9c3d9", bd: "#2a3142" };
   }
+}
+
+/* ---------- small helpers ---------- */
+
+function dedupeByUrl(list: ReadonlyArray<Suggestion>): Suggestion[] {
+  const seen = new Set<string>();
+  const out: Suggestion[] = [];
+  for (const s of list) {
+    const key = s.url || `${s.title}|${s.authors}|${s.year ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
 }

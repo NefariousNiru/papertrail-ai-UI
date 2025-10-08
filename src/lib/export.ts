@@ -1,12 +1,8 @@
 // src/lib/export.ts
 import type { Claim } from "./types";
 
-/**
- * Flow:
- * - Simple client-side export so users can keep results (no server persistence).
- */
-
 export function downloadJSON(claims: ReadonlyArray<Claim>) {
+    // Suggestions are part of Claim; JSON export will include them automatically.
     const blob = new Blob([JSON.stringify(claims, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     trigger(url, "papertrail_claims.json");
@@ -39,6 +35,18 @@ function renderClaimsMd(claims: ReadonlyArray<Claim>): string {
         if (c.verdict) lines.push(`- **Verdict:** ${c.verdict}`);
         if (typeof c.confidence === "number") lines.push(`- **Confidence:** ${c.confidence.toFixed(2)}`);
 
+        // ⬇️ Suggestions (if any)
+        if (c.suggestions && c.suggestions.length > 0) {
+            lines.push("", "### Suggested citations");
+            for (const s of c.suggestions) {
+                const meta = [s.authors || "Unknown authors", s.year ?? ""].filter(Boolean).join(" · ");
+                const title = s.title || "Untitled";
+                const link = s.url ? ` — ${s.url}` : "";
+                lines.push(`- ${escapeMd(title)}${meta ? ` (${escapeMd(meta)})` : ""}${link}`);
+            }
+        }
+
+        // Evidence
         if (c.evidence && c.evidence.length > 0) {
             lines.push("", "### Evidence");
             for (const ev of c.evidence) {
